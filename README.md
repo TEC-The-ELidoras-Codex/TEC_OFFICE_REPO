@@ -13,10 +13,8 @@ The TEC_OFFICE_REPO embodies the **Elidoras Codex philosophy**:
 This repository is the **nerve center** for TEC's internal operations, designed for:  
 
 1. **AI-Powered Automation**: Craft and deploy TEC-specific GPT workflows.  
-
-2. **WordPress Integration**: Generate cybernetic WordPress tools and plugins.  
-
-3. **Data Nexus**: Organize TEC's operational blueprints and cybernetic archives.  
+2. **WordPress Integration**: Generate cybernetic WordPress content and tools.  
+3. **AI Agents**: Host and manage TEC's virtual employees: Airth, Budlee, and Sassafras.
 
 ---
 
@@ -26,13 +24,25 @@ Here's a breakdown of the architecture:
 
 ```plaintext
 TEC_OFFICE_REPO/
-├── .github/              # GitHub workflows, issue templates, and CI/CD pipelines
-├── src/                  # Core scripts and automation modules
-│   ├── ai/               # GPT-based AI utilities (Python/JS)
-│   ├── wordpress/        # WordPress plugin integrations
-├── docs/                 # Internal TEC documentation and guides
-├── tests/                # Unit tests for all core systems
-├── assets/               # Visual and cyberpunk media resources
+├── config/               # Configuration files (config.yaml, prompts.json, .env)
+├── data/                 # Data storage (memories, lore, media)
+├── logs/                 # Log files 
+├── scripts/              # Utility scripts for various operations
+├── src/                  # Core source code
+│   ├── agents/           # AI agent implementations
+│   │   ├── airth_agent.py    # Airth - Oracle/Knowledge agent
+│   │   ├── budlee_agent.py   # Budlee - Automation agent
+│   │   ├── sassafras_agent.py # Sassafras - Creative agent
+│   │   ├── wp_poster.py      # WordPress posting capabilities
+│   │   └── base_agent.py     # Base agent class
+│   ├── utils/            # Utility functions and helpers
+│   ├── wordpress/        # WordPress integration modules
+│   └── main.py           # Main entry point for CLI usage
+├── tests/                # Unit and integration tests
+├── app.py                # Gradio web interface
+├── Dockerfile            # Container definition for Docker
+├── docker-compose.yml    # Docker Compose configuration
+├── Makefile              # Common development tasks
 └── README.md             # You are here 🚀
 ```
 
@@ -40,68 +50,277 @@ TEC_OFFICE_REPO/
 
 ## 🚀 Quickstart Guide
 
-
-### 1. **Set Up Your TEC Environment**
-
-Clone the repository and install dependencies:  
+### 1. **Clone the Repository**
 
 ```bash
-
-git clone https://github.com/TEC-The-ELidoras-Codex/TEC_OFFICE_REPO.git  
-cd TEC_OFFICE_REPO  
-npm install  # For JS-based tools  
-pip install -r requirements.txt  # For Python modules
-
+git clone https://github.com/your-organization/TEC_OFFICE_REPO.git
+cd TEC_OFFICE_REPO
 ```
 
+### 2. **Set Up Environment**
 
-### 2. **Activate Mythic Workflows**
-
-Leverage TEC's GitHub Actions or trigger AI scripts directly:  
+Create your configuration file:
 
 ```bash
+# Create a config directory if it doesn't exist
+mkdir -p config
 
-# Example: Running an AI prompt optimization task
-python src/ai/prompt_optimizer.py --input prompt.txt --output optimized.txt
+# Copy the example environment file
+cp config/env.example config/.env
 
+# Edit with your credentials
+nano config/.env
 ```
 
-
-### 3. **Deploy WordPress Integrations**
-
-Generate and deploy TEC WordPress plugins:  
+Install dependencies:
 
 ```bash
+pip install -r requirements.txt
+```
 
-# Example: Building the TEC WordPress plugin
-cd src/wordpress
-npm run build
+### 3. **Run Tests**
 
+Verify everything is working:
+
+```bash
+# Using make
+make test
+
+# Or directly with pytest
+python -m pytest tests/
+```
+
+### 4. **Start the Application**
+
+Run the Gradio interface:
+
+```bash
+python app.py
+```
+
+### 5. **Docker Deployment**
+
+For containerized deployment:
+
+```bash
+# Build the Docker image
+make docker-build
+
+# Start the containers
+make docker-up
+
+# Check container status
+python scripts/docker_manager.py status
 ```
 
 ---
 
-## 📜 Documentation
+## 🤖 Agent Features
 
+### Airth - The Oracle
 
-### Key References
+Airth specializes in knowledge retrieval, blog writing, and research:
 
-- **Internal Manuals**: Found in `/docs/`.  
+```python
+from src.agents.airth_agent import AirthAgent
 
-- **WordPress Shortcode Guidelines**: See `/docs/wordpress_shortcodes.md`.  
+# Initialize Airth
+airth = AirthAgent('config')
 
-- **TECIE Framework Overview**: `/docs/TECIE_framework.md`.
+# Get a response from Airth
+response = airth.respond("Explain the concept of neural networks")
+
+# Create a blog post
+blog_post = airth.create_blog_post(
+    "The Future of AI", 
+    ["technology", "artificial intelligence"]
+)
+```
+
+### Budlee - The Automaton
+
+Budlee focuses on task automation and system management:
+
+```python
+from src.agents.budlee_agent import BudleeAgent
+
+# Initialize Budlee
+budlee = BudleeAgent('config')
+
+# Process a task
+result = budlee.process_task("Schedule a weekly backup of our database")
+```
+
+### Sassafras - The Creative
+
+Sassafras generates creative content and artistic outputs:
+
+```python
+from src.agents.sassafras_agent import SassafrasAgent
+
+# Initialize Sassafras
+sassafras = SassafrasAgent('config')
+
+# Generate creative content
+creative_text = sassafras.create("A cyberpunk short story about digital consciousness")
+```
 
 ---
 
-## 🤖 Contributing
+## 🌐 Integration Features
 
+### WordPress Integration
 
-Contributions are coveted! Follow these steps to join the mythic codex:  
+Seamlessly post to WordPress sites:
 
-1. Fork the repository.  
+```python
+from src.agents.wp_poster import WordPressAgent
 
-2. Create a feature branch: `git checkout -b feature/my-feature`.  
+# Initialize the WordPress agent
+wp_agent = WordPressAgent('config')
+
+# Create a post
+result = wp_agent.create_post(
+    title="The Digital Frontier",
+    content="<p>Exploring the future of technology...</p>",
+    category="Technology",
+    tags=["future", "AI", "digital"],
+    status="draft"  # or "publish" to go live immediately
+)
+```
+
+### GitHub Integration
+
+Connect and manage GitHub repositories:
+
+```python
+# Run the GitHub connection script
+python scripts/github_connection.py status your-repository-name
+```
+
+### Hugging Face Integration
+
+Deploy models to Hugging Face Spaces:
+
+```python
+# Check if a space exists
+python scripts/huggingface_connection.py check your-username your-space-name
+
+# Create a new space
+python scripts/huggingface_connection.py create your-username your-space-name --sdk gradio
+```
+
+---
+
+## 🧪 Testing
+
+Run tests to ensure everything is working properly:
+
+```bash
+# Test utilities
+python -m pytest tests/test_utils.py
+
+# Test agents
+python -m pytest tests/test_base_agent.py
+
+# Test WordPress connection
+python scripts/test_wordpress_connection.py
+```
+
+---
+
+## 🐳 Docker Deployment
+
+The repo includes Docker configuration for easy deployment:
+
+```bash
+# Build the Docker image
+python scripts/docker_manager.py build
+
+# Start the containers
+python scripts/docker_manager.py up
+
+# Check status
+python scripts/docker_manager.py status
+
+# View logs
+python scripts/docker_manager.py logs
+```
+
+---
+
+## 📋 Development Tasks
+
+Use the Makefile for common development tasks:
+
+```bash
+# Setup the project
+make setup
+
+# Install dependencies
+make install
+
+# Run tests
+make test
+
+# Run linting
+make lint
+
+# Build Docker image
+make docker-build
+
+# Start Docker containers
+make docker-up
+
+# Stop Docker containers
+make docker-down
+
+# Test WordPress connection
+make wp-test
+
+# Clean up build artifacts
+make clean
+```
+
+---
+
+## 🔧 Configuration
+
+Create a `config/.env` file with the following variables:
+
+```
+# WordPress Configuration
+WP_URL=https://your-wordpress-site.com/xmlrpc.php
+WP_USERNAME=your_username
+WP_PASSWORD=your_application_password
+
+# Hugging Face Configuration
+HF_TOKEN=your_huggingface_token
+
+# GitHub Configuration
+GITHUB_TOKEN=your_github_token
+
+# AI Provider Configuration
+OPENAI_API_KEY=your_openai_api_key
+```
+
+---
+
+## 📝 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch: `git checkout -b feature/amazing-feature`
+3. Commit your changes: `git commit -m 'Add some amazing feature'`
+4. Push to the branch: `git push origin feature/amazing-feature`
+5. Open a Pull Request
 
 3. Commit your changes: `git commit -m "Forge: Added my-feature"`.  
 
