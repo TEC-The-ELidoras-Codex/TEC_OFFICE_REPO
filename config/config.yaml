@@ -1,0 +1,42 @@
+# TEC_OFFICE_REPO Configuration
+# This file contains non-sensitive configuration settings
+
+# General Settings
+app_name: TEC_Office
+version: 1.0.0
+debug: false
+
+# Agent Configuration
+agents:
+  airth:
+    enabled: true
+    memory_path: data/memories/airth_memories.json
+    lore_path: data/lore/tec_lore.json
+  budlee:
+    enabled: true
+    storage_path: data/storage/budlee_data
+  sassafras:
+    enabled: true
+    creativity_level: high
+
+# WordPress Configuration
+wordpress:
+  xmlrpc_path: /xmlrpc.php
+  default_category: TEC
+  default_status: draft  # Options: draft, publish
+  # Note: Credentials should be in .env file, not here
+
+# API Settings
+api:
+  openai:
+    model: gpt-4
+    max_tokens: 1000
+  anthropic:
+    model: claude-2
+    max_tokens: 1000
+
+# Paths
+paths:
+  logs: logs/
+  data: data/
+  config: config/

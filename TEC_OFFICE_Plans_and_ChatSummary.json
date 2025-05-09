@@ -1,0 +1,45 @@
+{
+    "title": "TEC_OFFICE_REPO Overview and Plans",
+    "date_generated": "2025-05-09 19:52:10",
+    "project_name": "TEC_OFFICE_REPO",
+    "description": "Command Nexus of The Elidoras Codex: A modular, AI-powered office suite leveraging GPT-based agents for automation, content creation, and integration with WordPress, Docker, GitHub, HuggingFace Spaces, and potentially AWS.",
+    "core_technologies": [
+        "Python",
+        "Docker",
+        "GitHub Actions",
+        "HuggingFace Spaces",
+        "PostgreSQL (via Docker)",
+        "WordPress (auto-sync tools)",
+        "AI Agent Architecture (TECIE framework)",
+        "VS Code + Remote Containers"
+    ],
+    "main_agents": {
+        "Airth": "Worldbuilder, Emotional Support AI, and Lore Designer",
+        "Budlee": "Code-focused DevOps AI, Plugin Builder, and Logic Checker",
+        "Sassafras Twistymuse": "Social Media Synth and Meme Alchemist",
+        "EVA": "Inbox + Task Scheduler, time-domain automation goddess"
+    },
+    "goals": [
+        "Automate publishing to elidorascodex.com",
+        "Streamline AI workflows via Docker + GPT integration",
+        "Create a ClickUp/TEC task sync bot",
+        "Deploy intelligent assistants via HuggingFace Spaces",
+        "Integrate PostgreSQL backend for long-term memory/logging",
+        "Prepare for optional AWS deployment when scaling"
+    ],
+    "current_tools_owned": [
+        "Docker",
+        "GitHub",
+        "HuggingFace",
+        "AWS (optional)",
+        "ClickUp"
+    ],
+    "laragon_consideration": "Not necessary unless specific local PHP/WordPress GUI is desired. Docker is sufficient and better aligned with current goals.",
+    "actions": [
+        "Finalize README for GitHub + HuggingFace",
+        "Design TEC-style digital office 'README' banner image",
+        "Generate visual roadmap of agent flows",
+        "Deploy base Space on HuggingFace under TECHF/TEC_Office",
+        "Build Dockerfile to support Space"
+    ]
+}
