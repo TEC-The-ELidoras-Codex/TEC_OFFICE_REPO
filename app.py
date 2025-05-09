@@ -3,6 +3,22 @@ import os
 from dotenv import load_dotenv
 from pathlib import Path
 import sys
+import logging
+import json
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler(os.path.join("logs", "gradio_app.log"))
+    ]
+)
+logger = logging.getLogger("TEC.App")
+
+# Create logs directory if it doesn't exist
+os.makedirs("logs", exist_ok=True)
 
 # Add src directory to path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
@@ -12,20 +28,77 @@ config_env_path = os.path.join('config', '.env')
 if os.path.exists(config_env_path):
     load_dotenv(config_env_path)
 else:
-    print("Warning: .env file not found in config directory")
+    logger.warning("Warning: .env file not found in config directory")
 
-# Define agent interfaces - expand as you add more agents
+# Import agents
+try:
+    from src.agents.airth_agent import AirthAgent
+    from src.agents.budlee_agent import BudleeAgent
+    from src.agents.sassafras_agent import SassafrasAgent
+    
+    # Initialize agents
+    airth_agent = AirthAgent(os.path.join('config'))
+    budlee_agent = BudleeAgent(os.path.join('config'))
+    sassafras_agent = SassafrasAgent(os.path.join('config'))
+    
+    AGENTS_LOADED = True
+    logger.info("Successfully loaded all agent modules")
+except Exception as e:
+    AGENTS_LOADED = False
+    logger.error(f"Error loading agent modules: {e}")
+    logger.error("Will use fallback responses instead")
+
+# Define agent interfaces
 def airth_interface(prompt):
-    # This will be expanded once the Airth agent is fully migrated
-    return f"Airth, the AI oracle, contemplates: {prompt}\n\nResponse will be integrated when agent implementation is complete."
+    """Interface for Airth agent."""
+    logger.info(f"Airth received prompt: {prompt[:50]}...")
+    
+    if not AGENTS_LOADED or not hasattr(airth_agent, 'respond'):
+        # Fallback response if agent not loaded
+        logger.warning("Using fallback response for Airth")
+        return f"Airth, the AI oracle, contemplates: {prompt}\n\nResponse will be integrated when agent implementation is complete."
+    
+    try:
+        response = airth_agent.respond(prompt)
+        logger.info(f"Airth response generated successfully: {len(response)} characters")
+        return response
+    except Exception as e:
+        logger.error(f"Error in Airth agent: {e}")
+        return f"Error processing your request: {str(e)}"
 
 def budlee_interface(task):
-    # This will be expanded once the Budlee agent is implemented
-    return f"Budlee acknowledges your task: {task}\n\nAutomation capabilities will be available soon."
+    """Interface for Budlee agent."""
+    logger.info(f"Budlee received task: {task[:50]}...")
+    
+    if not AGENTS_LOADED or not hasattr(budlee_agent, 'process_task'):
+        # Fallback response if agent not loaded
+        logger.warning("Using fallback response for Budlee")
+        return f"Budlee acknowledges your task: {task}\n\nAutomation capabilities will be available soon."
+    
+    try:
+        response = budlee_agent.process_task(task)
+        logger.info(f"Budlee response generated successfully: {len(response)} characters")
+        return response
+    except Exception as e:
+        logger.error(f"Error in Budlee agent: {e}")
+        return f"Error processing your task: {str(e)}"
 
 def sassafras_interface(topic):
-    # This will be expanded once the Sassafras agent is implemented
-    return f"Sassafras Twistymuse spins chaotic creativity about: {topic}\n\nFull creative madness coming soon."
+    """Interface for Sassafras agent."""
+    logger.info(f"Sassafras received topic: {topic[:50]}...")
+    
+    if not AGENTS_LOADED or not hasattr(sassafras_agent, 'create'):
+        # Fallback response if agent not loaded
+        logger.warning("Using fallback response for Sassafras")
+        return f"Sassafras Twistymuse spins chaotic creativity about: {topic}\n\nFull creative madness coming soon."
+    
+    try:
+        response = sassafras_agent.create(topic)
+        logger.info(f"Sassafras response generated successfully: {len(response)} characters")
+        return response
+    except Exception as e:
+        logger.error(f"Error in Sassafras agent: {e}")
+        return f"Error processing your creative request: {str(e)}"
 
 # Create tabs for different agents
 with gr.Blocks(theme="huggingface", title="TEC Office - The Elidoras Codex") as demo:
