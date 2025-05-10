@@ -74,8 +74,8 @@ Write-Host "`n== Step 2: Create Patterns File ==" -ForegroundColor Cyan
 Write-Host "Creating a file ($patternsFile) to list sensitive patterns to remove."
 
 @"
-***REMOVED***
-***REMOVED***
+# Add patterns for sensitive data to remove from Git history
+# Examples:
 OPENAI_API_KEY=sk-[a-zA-Z0-9]{40,}
 ANTHROPIC_API_KEY=sk-ant-[a-zA-Z0-9]{40,}
 WP_PASSWORD=.*
