@@ -17,21 +17,50 @@ class WordPressAgent(BaseAgent):
     It creates posts, updates content, and manages media uploads.
     """
     
-    def __init__(self, config_path: Optional[str] = None):
-        super().__init__("WordPressAgent", config_path)
-        self.logger.info("WordPressAgent initialized")
+    def __init__(self, config_path: Optional[str] = None, agent_config: Optional[Dict[str, Any]] = None):
+        if agent_config is None:
+            # Standard initialization if instantiated as a standalone agent
+            super().__init__("WordPressAgent", config_path)
+            self.logger.info("WordPressAgent initialized as a standalone agent.")
+            config_to_use = self.config
+        else:
+            # Initialization if an already loaded config is passed (e.g., by another agent)
+            # We need a name for the logger.
+            self.name = "WordPressAgent" # Or make it configurable
+            self.logger = logging.getLogger(f"TEC.{self.name}")
+            self.config = agent_config
+            # Manually load .env variables if not already done by a BaseAgent upstream
+            # This path assumes wp_poster.py is in src/agents/
+            project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+            env_path = os.path.join(project_root, 'config', '.env')
+            if not os.getenv("WP_SITE_URL"): # Check if .env might not have been loaded
+                 from dotenv import load_dotenv
+                 load_dotenv(env_path, override=True) # Ensure .env are available for os.getenv fallbacks
+            self.logger.info("WordPressAgent initialized with provided configuration.")
+            config_to_use = self.config
+
+
+        # Initialize WordPress API credentials from the effective configuration
+        wp_settings = config_to_use.get("wordpress", {})
+
+        self.wp_site_url = wp_settings.get("site_url", os.getenv("WP_SITE_URL")) or \
+                           wp_settings.get("url", os.getenv("WP_URL")) # Supporting "url" for backward compatibility
+        self.wp_user = wp_settings.get("user", os.getenv("WP_USER")) or \
+                       wp_settings.get("username", os.getenv("WP_USERNAME")) # Supporting "username"
+        self.wp_app_pass = wp_settings.get("app_pass", os.getenv("WP_APP_PASS")) or \
+                           wp_settings.get("password", os.getenv("WP_PASSWORD")) # Supporting "password"
+
+        # Fallback to a default URL if nothing is configured (though this should be rare)
+        if not self.wp_site_url:
+            self.wp_site_url = "https://elidorascodex.com" # Default as a last resort
+            self.logger.warning(f"WordPress site URL not found in config or environment. Using default: {self.wp_site_url}")
         
-        # Initialize WordPress API credentials
-        # Support both naming conventions for compatibility
-        self.wp_site_url = os.getenv("WP_SITE_URL") or os.getenv("WP_URL", "https://elidorascodex.com")
-        self.wp_user = os.getenv("WP_USER") or os.getenv("WP_USERNAME")
-        self.wp_app_pass = os.getenv("WP_APP_PASS") or os.getenv("WP_PASSWORD")
+        if not self.wp_user or not self.wp_app_pass:
+            self.logger.warning(
+                "WordPress user or application password not fully configured. "
+                "Please check your config.yaml, agent-specific JSON, or .env file."
+            )
         
-        # Check for required environment variables
-        if not self.wp_site_url or not self.wp_user or not self.wp_app_pass:
-            self.logger.warning("WordPress credentials not fully configured in environment variables.")
-        
-        # WordPress REST API endpoints
         self.api_base_url = f"{self.wp_site_url.rstrip('/')}/wp-json/wp/v2" if self.wp_site_url else None
         
         # Predefined categories and tags for TEC content
