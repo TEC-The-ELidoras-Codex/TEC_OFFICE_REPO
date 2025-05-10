@@ -1,4 +1,3 @@
-
 # PowerShell script to run WordPress posting tests
 # This script provides a menu to run different WordPress posting tests
 
@@ -27,13 +26,12 @@ function Show-Menu {
     Write-Host "=======================================" @FgCyan
     Write-Host "      WordPress Testing Utility       " @FgCyan
     Write-Host "=======================================" @FgCyan
-    Write-Host ""    Write-Host "1: Run Basic WordPress Connection Test" @FgGreen
-    Write-Host "2: Post Test Roadmap Article (Draft)" @FgGreen    Write-Host "3: Post Test Roadmap Article (Publish)" @FgGreen
+    Write-Host ""
+    Write-Host "1: Run Basic WordPress Connection Test" @FgGreen
+    Write-Host "2: Post Test Roadmap Article (Draft)" @FgGreen
+    Write-Host "3: Post Test Roadmap Article (Publish)" @FgGreen
     Write-Host "4: Run Enhanced WordPress Test" @FgGreen
     Write-Host "5: Initialize WordPress Categories" @FgGreen
-    Write-Host "6: Test Both WordPress API Styles" @FgGreen
-    Write-Host "7: Test Direct WordPress REST API" @FgGreen
-    Write-Host "8: Setup WordPress REST API Configuration" @FgGreen
     Write-Host "Q: Quit" @FgYellow
     Write-Host ""
 }
@@ -95,68 +93,14 @@ do {
                 $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
             }
         }
-          '5' {
+        
+        '5' {
             # Check if the initialize script exists
             $InitializeWPPath = Join-Path -Path $ProjectRoot -ChildPath "scripts\initialize_wordpress.py"
             if (Test-Path $InitializeWPPath) {
                 Run-Test -Command "python scripts\initialize_wordpress.py" -Description "Initialize WordPress Categories"
             } else {
                 Write-Host "`n❌ WordPress initialization script not found." @FgRed
-                Write-Host "This script might not have been created yet.`n" @FgYellow
-                Write-Host "Press any key to return to menu..."
-                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-            }
-        }
-          '6' {
-            # Check if the styles test script exists
-            $WpStylesTestPath = Join-Path -Path $ProjectRoot -ChildPath "scripts\wp_test_both_styles.py"
-            if (Test-Path $WpStylesTestPath) {
-                Run-Test -Command "python scripts\wp_test_both_styles.py" -Description "Test Both WordPress API Styles"
-            } else {
-                Write-Host "`n❌ WordPress API styles test script not found." @FgRed
-                Write-Host "This script might not have been created yet.`n" @FgYellow
-                Write-Host "Press any key to return to menu..."
-                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-            }
-        }
-        
-        '7' {
-            # Check if the REST API test script exists
-            $RestApiTestPath = Join-Path -Path $ProjectRoot -ChildPath "scripts\wp_rest_api_test.py"
-            if (Test-Path $RestApiTestPath) {
-                Run-Test -Command "python scripts\wp_rest_api_test.py" -Description "Direct WordPress REST API Test"
-            } else {
-                Write-Host "`n❌ WordPress REST API test script not found." @FgRed
-                Write-Host "This script might not have been created yet.`n" @FgYellow
-                Write-Host "Press any key to return to menu..."
-                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-            }
-        }
-        
-        '8' {
-            # Check if the REST API setup script exists
-            $RestApiSetupPath = Join-Path -Path $ProjectRoot -ChildPath "scripts\setup_wp_rest.ps1"
-            if (Test-Path $RestApiSetupPath) {
-                Write-Host "=======================================" @FgCyan
-                Write-Host " Setup WordPress REST API Configuration " @FgCyan
-                Write-Host "=======================================" @FgCyan
-                Write-Host ""
-                
-                try {
-                    & "$RestApiSetupPath"
-                    if ($LASTEXITCODE -eq 0) {
-                        Write-Host "`n✅ WordPress REST API setup completed successfully!" @FgGreen
-                    } else {
-                        Write-Host "`n❌ WordPress REST API setup failed with exit code $LASTEXITCODE" @FgRed
-                    }
-                } catch {
-                    Write-Host "`n❌ Error executing setup script: $_" @FgRed
-                }
-                
-                Write-Host "`nPress any key to return to menu..."
-                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-            } else {
-                Write-Host "`n❌ WordPress REST API setup script not found." @FgRed
                 Write-Host "This script might not have been created yet.`n" @FgYellow
                 Write-Host "Press any key to return to menu..."
                 $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
