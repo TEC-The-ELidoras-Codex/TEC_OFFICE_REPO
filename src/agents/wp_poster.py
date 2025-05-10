@@ -6,7 +6,7 @@ import os
 import logging
 import json
 import requests
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Union
 from base64 import b64encode
 
 from .base_agent import BaseAgent
@@ -212,20 +212,33 @@ class WordPressAgent(BaseAgent):
         except Exception as e:
             self.logger.error(f"Error retrieving categories: {e}")
             return []
-    
-    def create_post(self, title: str, content: str, 
+      def create_post(self, title_or_data: Union[str, Dict[str, Any]], content: Optional[str] = None, 
                    category: str = "uncategorized", 
                    tags: List[str] = None,
                    status: str = "draft") -> Dict[str, Any]:
         """
         Create a post on WordPress.
         
+        This method supports two calling styles:
+        
+        Style 1 (separate parameters):
+            create_post(title="My Title", content="My Content", status="draft")
+            
+        Style 2 (dictionary parameter):
+            create_post({
+                'title': 'My Title', 
+                'content': 'My Content',
+                'status': 'draft',
+                'categories': [1, 2],
+                'tags': ['tag1', 'tag2']
+            })
+        
         Args:
-            title: The post title
-            content: The post content HTML
-            category: The category slug to post to
-            tags: The tags to apply to the post
-            status: Publication status (draft, publish, etc.)
+            title_or_data: Either the post title (str) or a dictionary with all post details
+            content: The post content HTML (only used if title_or_data is a string)
+            category: The category slug to post to (only used if title_or_data is a string)
+            tags: The tags to apply to the post (only used if title_or_data is a string)
+            status: Publication status (draft, publish, etc.) (only used if title_or_data is a string)
             
         Returns:
             Dictionary with post status and details

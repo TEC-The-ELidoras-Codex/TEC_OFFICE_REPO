@@ -75,18 +75,15 @@ def create_test_post():
                     break
             
             category_ids = [tech_category_id] if tech_category_id else [list(categories.keys())[0]]
-        
-        # Create the post
-        post_data = {
-            'title': test_title,
-            'content': test_content,
-            'status': 'draft',  # Always create as draft for testing
-            'categories': category_ids,
-            'tags': ['test', 'automated-test', 'tec-office']
-        }
-        
+          # Create the post - using the correct method signature
         print(f"Creating test post: {test_title}")
-        result = wp_agent.create_post(post_data)
+        result = wp_agent.create_post(
+            title=test_title,
+            content=test_content,
+            status="draft",  # Always create as draft for testing
+            category="uncategorized",
+            tags=['test', 'automated-test', 'tec-office']
+        )
         
         if result.get('success'):
             print(f"\n✅ Test post created successfully!")
