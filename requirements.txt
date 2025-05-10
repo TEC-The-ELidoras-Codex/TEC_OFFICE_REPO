@@ -42,3 +42,6 @@ docker>=6.0.0
 tqdm>=4.65.0
 colorama>=0.4.6
 beautifulsoup4>=4.11.0
+
+# PostgreSQL connection
+psycopg2-binary
