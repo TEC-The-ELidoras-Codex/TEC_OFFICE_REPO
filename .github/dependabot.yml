@@ -1,0 +1,25 @@
+version: 2
+updates:
+  # Python dependencies (pip or Poetry)
+  - package-ecosystem: "pip"
+    directory: "/" # Update dependencies in the root directory
+    schedule:
+      interval: "weekly"
+
+  # Shell & Batchfile script dependencies (if managed via custom tools)
+  - package-ecosystem: "npm"
+    directory: "/scripts"
+    schedule:
+      interval: "monthly"
+
+  # GitHub Actions (keep workflows updated)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
+
+  # Docker dependencies
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
