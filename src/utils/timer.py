@@ -251,8 +251,7 @@ class PomodoroTimer:
         self.timer_thread = threading.Timer(time_remaining, self._timer_complete)
         self.timer_thread.daemon = True
         self.timer_thread.start()
-    
-    def _timer_complete(self):
+      def _timer_complete(self):
         """Handle timer completion."""
         if not self.active:
             return
