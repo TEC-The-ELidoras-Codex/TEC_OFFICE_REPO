@@ -242,12 +242,12 @@ class PomodoroTimer:
         self._trigger_callbacks("on_start")
         
         logger.info(f"Started {phase} timer for {duration_minutes} minutes")
-        
-    def _start_timer_thread(self):
+          def _start_timer_thread(self):
         """Start the timer thread to track completion."""
         if self.timer_thread is not None:
             self.timer_thread.cancel()
-              time_remaining = max(0, (self.end_time - datetime.utcnow()).total_seconds())
+            
+        time_remaining = max(0, (self.end_time - datetime.utcnow()).total_seconds())
         self.timer_thread = threading.Timer(time_remaining, self._timer_complete)
         self.timer_thread.daemon = True
         self.timer_thread.start()
