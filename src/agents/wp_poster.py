@@ -250,58 +250,68 @@ class WordPressAgent(BaseAgent):
         if not self.wp_user or not self.wp_app_pass:
             self.logger.error("Cannot create post: WordPress credentials not configured")
             return {"success": False, "error": "WordPress credentials not configured"}
+        
+        # Handle two different calling styles
+        if isinstance(title_or_data, dict):
+            # Style 2: Dictionary parameter contains all the post details
+            post_data = title_or_data.copy()  # Make a copy to avoid modifying the original
+            title = post_data.get('title', '')
+        else:
+            # Style 1: Separate parameters
+            title = title_or_data
             
-        # Get category ID
-        category_id = self.categories.get(category)
-        if category_id is None:
-            # Try refreshing categories
-            self.get_categories()
+            # Get category ID
             category_id = self.categories.get(category)
-            
-            # Fall back to uncategorized
             if category_id is None:
-                category_id = self.categories.get("uncategorized")
+                # Try refreshing categories
+                self.get_categories()
+                category_id = self.categories.get(category)
                 
-        # Prepare tag IDs (first create them if they don't exist)
-        tag_ids = []
-        if tags:
-            for tag in tags:
-                tag_id = self._create_or_get_tag(tag)
-                if tag_id:
-                    tag_ids.append(tag_id)
-        
-        # Prepare the post data
-        post_data = {
-            "title": title,
-            "content": content,
-            "status": status
-        }
-        
-        # Add categories if available
-        if category_id:
-            post_data["categories"] = [category_id]
+                # Fall back to uncategorized
+                if category_id is None:
+                    category_id = self.categories.get("uncategorized")
+                    
+            # Prepare tag IDs (first create them if they don't exist)
+            tag_ids = []
+            if tags:
+                for tag in tags:
+                    tag_id = self._create_or_get_tag(tag)
+                    if tag_id:
+                        tag_ids.append(tag_id)
             
-        # Add tags if available
-        if tag_ids:
-            post_data["tags"] = tag_ids
+            # Prepare the post data
+            post_data = {
+                "title": title,
+                "content": content,
+                "status": status
+            }
             
-        try:
-            # Create the post
+            # Add categories if available
+            if category_id:
+                post_data["categories"] = [category_id]
+                
+            # Add tags if available
+            if tag_ids:
+                post_data["tags"] = tag_ids
+            
+        try:            # Create the post
             url = f"{self.api_base_url}/posts"
             response = self._try_multiple_auth_methods("POST", url, post_data)
             
             if response and response.status_code in [200, 201]:
-                post_data = response.json()
-                post_id = post_data.get("id")
-                post_url = post_data.get("link")
+                response_data = response.json()
+                post_id = response_data.get("id")
+                post_url = response_data.get("link")
+                post_status = response_data.get("status", status)
+                post_title = response_data.get("title", {}).get("rendered", title)
                 
-                self.logger.info(f"Created post with ID {post_id}: {title}")
+                self.logger.info(f"Created post with ID {post_id}: {post_title}")
                 return {
                     "success": True,
                     "post_id": post_id,
-                    "title": title,
+                    "title": post_title,
                     "url": post_url,
-                    "status": status
+                    "status": post_status
                 }
             else:
                 status_code = response.status_code if response else "No response"

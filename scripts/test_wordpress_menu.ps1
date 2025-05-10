@@ -26,12 +26,12 @@ function Show-Menu {
     Write-Host "=======================================" @FgCyan
     Write-Host "      WordPress Testing Utility       " @FgCyan
     Write-Host "=======================================" @FgCyan
-    Write-Host ""
-    Write-Host "1: Run Basic WordPress Connection Test" @FgGreen
+    Write-Host ""    Write-Host "1: Run Basic WordPress Connection Test" @FgGreen
     Write-Host "2: Post Test Roadmap Article (Draft)" @FgGreen
     Write-Host "3: Post Test Roadmap Article (Publish)" @FgGreen
     Write-Host "4: Run Enhanced WordPress Test" @FgGreen
     Write-Host "5: Initialize WordPress Categories" @FgGreen
+    Write-Host "6: Test Both WordPress API Styles" @FgGreen
     Write-Host "Q: Quit" @FgYellow
     Write-Host ""
 }
