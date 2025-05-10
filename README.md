@@ -339,6 +339,56 @@ OPENAI_API_KEY=your_openai_api_key
 
 ---
 
+## 🔐 Securing Credentials
+
+**Important Security Notice**: Never commit sensitive information to your Git repository.
+
+Follow these best practices:
+- Use `.env` files for secrets and keep them in `.gitignore`
+- Create template files like `.env.template` or `.env.example` with placeholder values
+- Regularly rotate credentials, especially after accidental exposure
+- Use the provided setup scripts to securely configure your environment:
+
+```bash
+# Windows (PowerShell)
+cd scripts
+.\setup_env.ps1
+
+# Linux/macOS 
+cd scripts
+bash ./setup_env.sh
+```
+
+For detailed security best practices and Docker environment setup, see our [Docker Environment Setup Guide](docs/docker_environment_setup.md).
+
+---
+
+## 🧠 Airth's WordPress Posting
+
+Airth, the Machine Goddess AI agent, can automatically create and post articles to WordPress:
+
+```python
+# Import the agent
+from src.agents.airth_agent import AirthAgent
+
+# Initialize Airth with config
+airth = AirthAgent('config')
+
+# Create and post a roadmap article (as draft)
+result = airth.create_wordpress_article_about_roadmap(
+    roadmap_content, 
+    post_status="draft"
+)
+```
+
+Use the provided script to test WordPress posting functionality:
+
+```bash
+python scripts/post_roadmap_article.py
+```
+
+---
+
 ## 📝 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.

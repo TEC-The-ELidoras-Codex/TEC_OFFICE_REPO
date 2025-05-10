@@ -1,1 +1,57 @@
+# Environment variables
 config/.env
+.env
+.env.*
+!.env.template
+!.env.example
+!config/env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Docker
+.docker-volumes/
+
+# Logs
+logs/
+*.log
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Sensitive configuration
+*.pem
+*.key
+
+# Data files that shouldn't be committed
+data/storage/*
+!data/storage/.gitkeep
