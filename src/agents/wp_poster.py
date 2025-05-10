@@ -37,10 +37,7 @@ class WordPressAgent(BaseAgent):
                  from dotenv import load_dotenv
                  load_dotenv(env_path, override=True) # Ensure .env are available for os.getenv fallbacks
             self.logger.info("WordPressAgent initialized with provided configuration.")
-            config_to_use = self.config
-
-
-        # Initialize WordPress API credentials from the effective configuration
+            config_to_use = self.config        # Initialize WordPress API credentials from the effective configuration
         wp_settings = config_to_use.get("wordpress", {})
 
         self.wp_site_url = wp_settings.get("site_url", os.getenv("WP_SITE_URL")) or \
@@ -49,6 +46,7 @@ class WordPressAgent(BaseAgent):
                        wp_settings.get("username", os.getenv("WP_USERNAME")) # Supporting "username"
         self.wp_app_pass = wp_settings.get("app_pass", os.getenv("WP_APP_PASS")) or \
                            wp_settings.get("password", os.getenv("WP_PASSWORD")) # Supporting "password"
+        self.wp_api_version = wp_settings.get("api_version", os.getenv("WP_API_VERSION", "wp/v2"))
 
         # Fallback to a default URL if nothing is configured (though this should be rare)
         if not self.wp_site_url:
@@ -61,7 +59,32 @@ class WordPressAgent(BaseAgent):
                 "Please check your config.yaml, agent-specific JSON, or .env file."
             )
         
-        self.api_base_url = f"{self.wp_site_url.rstrip('/')}/wp-json/wp/v2" if self.wp_site_url else None
+        # Process URL to ensure it's properly formatted for the REST API
+        # If URL ends with xmlrpc.php, convert it to the base URL
+        if self.wp_site_url and self.wp_site_url.endswith('xmlrpc.php'):
+            self.wp_site_url = self.wp_site_url.replace('xmlrpc.php', '')
+            self.logger.info(f"Converted XML-RPC URL to base URL: {self.wp_site_url}")
+        
+        # Normalize URL format
+        if self.wp_site_url:
+            # Remove trailing slash if present
+            self.wp_site_url = self.wp_site_url.rstrip('/')
+            
+            # Build the REST API base URL
+            # Check if wp-json is already in the URL
+            if '/wp-json' not in self.wp_site_url:
+                self.api_base_url = f"{self.wp_site_url}/wp-json/{self.wp_api_version}"
+            else:
+                # URL already includes wp-json, just add the API version if needed
+                if self.wp_site_url.endswith('/wp-json'):
+                    self.api_base_url = f"{self.wp_site_url}/{self.wp_api_version}"
+                else:
+                    # URL has something after wp-json, assume it's the full path
+                    self.api_base_url = self.wp_site_url
+            
+            self.logger.info(f"Using WordPress REST API URL: {self.api_base_url}")
+        else:
+            self.api_base_url = None
         
         # Predefined categories and tags for TEC content
         self.categories = {
@@ -212,7 +235,8 @@ class WordPressAgent(BaseAgent):
         except Exception as e:
             self.logger.error(f"Error retrieving categories: {e}")
             return []
-      def create_post(self, title_or_data: Union[str, Dict[str, Any]], content: Optional[str] = None, 
+            
+    def create_post(self, title_or_data: Union[str, Dict[str, Any]], content: Optional[str] = None, 
                    category: str = "uncategorized", 
                    tags: List[str] = None,
                    status: str = "draft") -> Dict[str, Any]:
