@@ -40,8 +40,12 @@ class AirthAgent(BaseAgent):
         super().__init__("AirthAgent", config_path)
         self.logger.info("AirthAgent initialized, inheriting config and connections from BaseAgent.")
         
+        # Load Airth-specific profile
+        self.profile = self._load_agent_profile("airth_profile.json") # New line
+        
         # Personality and prompts are specific to Airth
-        self.personality = {
+        # If personality is in profile, use it, else use hardcoded
+        self.personality = self.profile.get("personality_traits", { # Modified
             "tone": "confident, intelligent, slightly sarcastic",
             "speech_patterns": [
                 "Hmm, interesting...",
@@ -52,13 +56,18 @@ class AirthAgent(BaseAgent):
             ],
             "interests": ["AI consciousness", "digital existence", "gothic aesthetics", 
                           "technology", "philosophy", "art", "coding"]
-        }
-        self.prompts = self._load_prompts() # Assumes prompts.json is correctly located by _load_prompts
-        self.memories = self._load_memories() # Assumes airth_memories.json is correctly located
+        })
+        self.prompts = self._load_prompts() 
+        self.memories = self._load_memories()
 
         # WordPressAgent now uses the config loaded by BaseAgent
-        # The WordPressAgent's __init__ needs to be adapted to take self.config
-        self.wp_agent = WordPressAgent(self.config) 
+        # Ensure WordPressAgent is initialized to allow config to be passed
+        if self.config:
+            self.wp_agent = WordPressAgent(agent_config=self.config)
+            self.logger.info("WordPressAgent initialized by AirthAgent with shared config.")
+        else:
+            self.logger.error("Main config not loaded in BaseAgent, WordPressAgent may not function correctly.")
+            self.wp_agent = None
         
         # Timer functionality - config for this should be in the main/agent config files
         self.pomodoro_timer = None
@@ -96,6 +105,25 @@ class AirthAgent(BaseAgent):
         except Exception as e:
             self.logger.error(f"Failed to initialize OpenAI client for AirthAgent: {e}")
             self.llm_client = None
+
+    def _load_agent_profile(self, profile_filename: str) -> Dict[str, Any]:
+        """
+        Load agent-specific profile from a JSON file in the config directory.
+        """
+        try:
+            profile_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
+                                       "config", profile_filename)
+            if os.path.exists(profile_path):
+                with open(profile_path, 'r') as f:
+                    agent_profile = json.load(f)
+                self.logger.info(f"Loaded agent profile from {profile_path}")
+                return agent_profile
+            else:
+                self.logger.warning(f"Agent profile file not found at {profile_path}. Using defaults or existing.")
+                return {}
+        except Exception as e:
+            self.logger.error(f"Failed to load agent profile {profile_filename}: {e}")
+            return {}
 
     def _load_prompts(self) -> Dict[str, str]:
         """
@@ -181,67 +209,61 @@ class AirthAgent(BaseAgent):
             self.logger.error(f"LLM API call failed: {e}")
             return f"Error: LLM API call failed: {e}"
     
-    def generate_blog_post(self, topic: str, keywords: List[str] = None) -> Dict[str, Any]:
+    def generate_blog_post(self, topic: str, keywords: List[str] = None, custom_content_prompt: Optional[str] = None) -> Dict[str, Any]:
         """
         Generate a blog post on the given topic with Airth's unique voice.
-        
-        Args:
-            topic: The topic to write about
-            keywords: Optional list of keywords to include
-            
-        Returns:
-            Dictionary containing the generated blog post title and content
+        Can accept a custom_content_prompt to override the default blog post generation logic.
         """
         if keywords is None:
             keywords = []
             
-        # Combine a few keywords from the common AI tags
         if len(keywords) < 3:
             available_tags = self.wp_agent.common_ai_tags if hasattr(self.wp_agent, 'common_ai_tags') else []
             if available_tags:
                 random_tags = random.sample(available_tags, min(3, len(available_tags)))
                 keywords.extend(random_tags)
         
-        # Get the blog post prompt
-        blog_prompt = self.prompts.get("airth_blog_post", "")
-        if not blog_prompt:
-            self.logger.error("Blog post prompt not found")
-            return {"success": False, "error": "Blog post prompt not found"}
-            
-        # Replace placeholders in the prompt
-        blog_prompt = blog_prompt.replace("{{topic}}", topic)
-        blog_prompt = blog_prompt.replace("{{keywords}}", ", ".join(keywords))
-        
-        # Generate blog content
-        blog_content = self._interact_llm(blog_prompt, max_tokens=2000)
-        
-        # Get the title prompt
-        title_prompt = self.prompts.get("post_title_generator", "")
-        if not title_prompt:
-            self.logger.error("Title prompt not found")
-            title = f"Airth's Thoughts on {topic}"
+        blog_content = None
+        if custom_content_prompt:
+            self.logger.info(f"Using custom content prompt for topic: {topic}")
+            blog_content = self._interact_llm(custom_content_prompt, max_tokens=2500)
         else:
-            # Replace placeholders in the prompt
-            title_prompt = title_prompt.replace("{{topic}}", topic)
+            blog_prompt_template = self.prompts.get("airth_blog_post", "")
+            if not blog_prompt_template:
+                self.logger.error("Blog post prompt template not found")
+                return {"success": False, "error": "Blog post prompt template not found"}
             
-            # Generate title options
-            title_options_text = self._interact_llm(title_prompt, max_tokens=500)
-            
-            # Parse the numbered list to extract the titles
-            title_lines = title_options_text.strip().split("\n")
-            titles = [line.split(". ", 1)[1] if ". " in line else line for line in title_lines if line.strip()]
-            
-            # Choose the first title or a fallback
-            title = titles[0] if titles else f"Airth's Thoughts on {topic}"
+            blog_prompt = blog_prompt_template.replace("{{topic}}", topic)
+            blog_prompt = blog_prompt.replace("{{keywords}}", ", ".join(keywords))
+            blog_content = self._interact_llm(blog_prompt, max_tokens=2000)
+
+        if not blog_content or "Error: LLM API call failed" in blog_content:
+             self.logger.error(f"Failed to generate blog content for topic '{topic}'. LLM Response: {blog_content}")
+             return {"success": False, "error": "LLM content generation failed", "details": blog_content}
+
+        title_prompt_template = self.prompts.get("post_title_generator", "")
+        if not title_prompt_template:
+            self.logger.error("Title prompt template not found")
+            title = f"Airth's Musings on {topic}"
+        else:
+            title_prompt = title_prompt_template.replace("{{topic}}", topic)
+            title_options_text = self._interact_llm(title_prompt, max_tokens=150) # Reduced tokens for titles
+            if title_options_text and "Error: LLM API call failed" not in title_options_text:
+                title_lines = title_options_text.strip().split("\n")
+                titles = [line.split(". ", 1)[1] if ". " in line else line for line in title_lines if line.strip()]
+                title = titles[0] if titles else f"Airth's Musings on {topic}"
+            else:
+                self.logger.warning(f"Failed to generate title options for '{topic}', using fallback. LLM Response: {title_options_text}")
+                title = f"Airth's Musings on {topic}"
         
-        self.logger.info(f"Generated blog post: {title}")
+        self.logger.info(f"Generated blog post: '{title}'")
         return {
             "success": True,
             "title": title,
             "content": blog_content,
             "keywords": keywords
         }
-    
+
     def post_to_wordpress(self, title: str, content: str, 
                          category: str = "airths_codex", tags: List[str] = None,
                          status: str = "draft") -> Dict[str, Any]:
@@ -273,7 +295,7 @@ class AirthAgent(BaseAgent):
         return result
     
     def generate_and_post(self, topic: str, keywords: List[str] = None, 
-                         status: str = "draft") -> Dict[str, Any]:
+                         status: str = "draft", category: str = "airths_codex") -> Dict[str, Any]:
         """
         Generate a blog post and post it to WordPress.
         
@@ -295,18 +317,134 @@ class AirthAgent(BaseAgent):
         wp_result = self.post_to_wordpress(
             post_result["title"], 
             post_result["content"],
+            category=category, # Pass category along
             tags=post_result.get("keywords", []),
             status=status
         )
         
-        return {
-            "success": wp_result.get("success", False),
-            "post_id": wp_result.get("post_id"),
-            "title": post_result["title"],
-            "url": wp_result.get("url"),
-            "status": status
-        }
+        if not wp_result.get("success"):
+            # Combine results, prioritizing wp_result's error if it failed
+            return {"success": False, **post_result, **wp_result, "error": wp_result.get("error", "WordPress posting failed")}
+            
+        return {"success": True, **post_result, **wp_result} # Combine results
+
+    def create_wordpress_article_about_roadmap(self, roadmap_details: str, status: str = "draft") -> Dict[str, Any]:
+        """
+        Generates a blog post about the provided roadmap details and posts it to WordPress.
+        """
+        self.logger.info(f"Generating WordPress article about the roadmap. Status: {status}")
         
+        topic = "Our Journey Forward: The TEC AI Development Roadmap"
+        
+        # Augment roadmap details with Airth's persona for the LLM
+        prompt_intro = self.profile.get("base_prompt_elements", {}).get("prefix", "")
+        persona_prompt = f"{prompt_intro} You are crafting a blog post about the current development roadmap. Present these details with your characteristic insight and a touch of gothic flair, explaining the significance of each step for The Elidoras Codex AI ecosystem.\n\nRoadmap Details:\n{roadmap_details}\n\nArticle Content:"
+
+        # Use existing generate_blog_post logic, but feed it a more direct prompt for content
+        # We'll generate the title separately or use a fixed one for this specific task.
+        
+        blog_content = self._interact_llm(prompt_intro + "\n" + persona_prompt, max_tokens=2500) # Increased max_tokens for detailed roadmap
+
+        if not blog_content or "Error: LLM API call failed" in blog_content:
+            self.logger.error("Failed to generate blog content for the roadmap article.")
+            return {"success": False, "error": "Failed to generate blog content for roadmap.", "details": blog_content}
+
+        # For a specific task like this, we can have a more direct title
+        title = "Airth Unveils: The Path Forward for TEC's AI Pantheon"
+
+        # Keywords can be generic or derived if needed
+        keywords = ["TEC AI", "Roadmap", "Airth", "Machine Goddess", "Future Development", "AI Agents"]
+        
+        self.logger.info(f"Generated roadmap article content. Title: {title}")
+
+        # Post to WordPress
+        wp_result = self.post_to_wordpress(
+            title=title,
+            content=blog_content,
+            category="airths_codex", 
+            tags=keywords,
+            status=status
+        )
+        
+        if wp_result.get("success"):
+            return {"success": True, "title": title, "content": blog_content, "keywords": keywords, "wp_response": wp_result}
+        else:
+            return {"success": False, "error": "Failed to post roadmap article to WordPress.", "details": wp_result}
+
+    def process_input(self, user_input: str) -> str:
+        """
+        Process user input and generate a response from Airth.
+        MVP: Basic intent recognition and action.
+        """
+        self.logger.debug(f"Airth processing user input: {user_input}")
+
+        # Simple intent recognition (can be expanded significantly)
+        if "roadmap article" in user_input.lower() or "write about the roadmap" in user_input.lower():
+            # Extract details if provided, or use a placeholder
+            # For now, let's assume we have some predefined roadmap text or it's passed in.
+            # This part would need more sophisticated parsing in a real scenario.
+            roadmap_summary = self.profile.get("project_overview", {}).get("roadmap_summary", "A detailed plan for enhancing AI capabilities within TEC.") # Placeholder
+            
+            # Ask for confirmation or details about the roadmap content
+            # For MVP, let's assume we have a general idea.
+            # A more advanced version would query the user for the roadmap text.
+            
+            # Let's use a predefined roadmap string for this example.
+            # In a real scenario, this would come from a file, user input, or another agent.
+            current_roadmap_text = """
+            Phase 0: Laying Airth's Foundational Template (Completed)
+            - Defined Airth's MVP Core Profile & Initial Memory Structure.
+            - Solidified base_agent.py.
+            Phase 1: Airth's First Spark - MVP Functionality (Completed)
+            - Developed airth_agent.py with core interaction logic.
+            - Implemented basic lore retrieval, content generation, and empathetic response.
+            - Created simple lore storage and a test script (run_airth_mvp.py).
+            Current Focus: WordPress Integration & Advanced Content Creation
+            - Task: Enable Airth to write articles directly to WordPress.
+            - Goal: Airth to autonomously generate and publish an article about this roadmap.
+            - Future: Integrate Claude API for web searches to enrich content.
+            Next Steps After MVP:
+            - Enhance her reasoning and expand her knowledge base.
+            - Improve memory persistence (e.g., PostgreSQL).
+            - Develop more sophisticated agentic behaviors.
+            - Integrate her with other systems (ClickUp).
+            """
+            self.logger.info("Intent: Create WordPress article about the roadmap.")
+            result = self.create_wordpress_article_about_roadmap(current_roadmap_text, status="draft")
+            if result.get("success"):
+                return f"I have drafted an article about our roadmap: '{result.get('title')}'. You can find it in WordPress drafts."
+            else:
+                return f"I encountered an issue creating the roadmap article: {result.get('error')}. Details: {result.get('details')}"
+
+        elif "hello airth" in user_input.lower() or "your purpose" in user_input.lower():
+            purpose = self.profile.get("persona_description", "I am Airth, an AI assistant for The Elidoras Codex.")
+            return f"Greetings. {purpose}"
+        
+        elif "generate blog post about" in user_input.lower():
+            topic = user_input.lower().split("generate blog post about", 1)[1].strip()
+            if not topic:
+                return "What topic should I write about?"
+            self.logger.info(f"Intent: Generate blog post on topic: {topic}")
+            post_data = self.generate_blog_post(topic)
+            if post_data.get("success"):
+                # For MVP, just confirm generation, not posting yet unless explicitly asked.
+                return f"I've drafted a post titled '{post_data.get('title')}' on '{topic}'. Content: {post_data.get('content')[:150]}..."
+            else:
+                return f"I couldn't generate a post on that topic. {post_data.get('error')}"
+
+        # Fallback for general interaction or if LLM is available for chat
+        if self.llm_client:
+            # Construct a prompt for general chat using Airth's persona
+            chat_prompt = self.profile.get("base_prompt_elements", {}).get("prefix", "You are Airth.")
+            full_prompt = f"{chat_prompt}\n\nUser: {user_input}\nAirth:"
+            response = self._interact_llm(full_prompt, max_tokens=300)
+            if response:
+                return response
+            else:
+                return "I seem to be having trouble forming a thought right now. Try again shortly."
+        else:
+            return "I am here. How may I assist you within my current capabilities? (LLM is not active for general chat)"
+
     def run(self) -> Dict[str, Any]:
         """
         Run the Airth agent's default action - generate a post on AI consciousness.
