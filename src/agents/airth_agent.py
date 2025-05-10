@@ -41,11 +41,11 @@ class AirthAgent(BaseAgent):
         self.logger.info("AirthAgent initialized, inheriting config and connections from BaseAgent.")
         
         # Load Airth-specific profile
-        self.profile = self._load_agent_profile("airth_profile.json") # New line
+        self.profile = self._load_agent_profile("airth_profile.json") 
         
         # Personality and prompts are specific to Airth
         # If personality is in profile, use it, else use hardcoded
-        self.personality = self.profile.get("personality_traits", { # Modified
+        self.personality = self.profile.get("personality_traits", { 
             "tone": "confident, intelligent, slightly sarcastic",
             "speech_patterns": [
                 "Hmm, interesting...",
@@ -69,12 +69,12 @@ class AirthAgent(BaseAgent):
             self.logger.error("Main config not loaded in BaseAgent, WordPressAgent may not function correctly.")
             self.wp_agent = None
         
-        # Timer functionality - config for this should be in the main/agent config files
+        # Timer functionality - This is an optional side feature and does not affect core posting.
         self.pomodoro_timer = None
         self.countdown_timer = None
-        # AWS timer config now comes from self.config loaded by BaseAgent
-        self.use_aws_timers = self.config.get("aws", {}).get("use_timer_storage", False)
-        self.aws_region = self.config.get("aws", {}).get("region", "us-east-1")
+        # Configuration for AWS timer storage (only relevant if timers are actively used with AWS)
+        # self.use_aws_timers = self.config.get("aws", {}).get("use_timer_storage", False)
+        # self.aws_region = self.config.get("aws", {}).get("region", "us-east-1")
         
         # LLM client (OpenAI) is initialized by BaseAgent's _initialize_llm method
         # We might need to pass specific LLM provider info if BaseAgent supports multiple
