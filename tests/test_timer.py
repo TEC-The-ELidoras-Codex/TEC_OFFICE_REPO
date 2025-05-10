@@ -105,31 +105,35 @@ class TestPomodoroTimer(unittest.TestCase):
         # Use a very short timer to ensure completion during the test
         self.timer.work_minutes = 0.01  # Less than a second
         self.timer.start()
-        
-        # Wait for the callback to be triggered (with timeout)
+          # Wait for the callback to be triggered (with timeout)
         self.assertTrue(callback_triggered.wait(2), "Callback was not triggered")
     
     def test_pomodoro_sequence(self):
         """Test the Pomodoro sequence flow."""
-        # Mock the timer to complete instantly
-        with patch.object(self.timer, '_start_timer_thread', lambda: self.timer._timer_complete()):
-            # Start first work session
-            self.timer.start()
-            self.assertEqual(self.timer.current_phase, "short_break")
-            self.assertEqual(self.timer.completed_pomodoros, 1)
-            
-            # Short break completes -> work
-            self.timer._timer_complete()
-            self.assertEqual(self.timer.current_phase, "work")
-            
-            # Work completes -> long break (after 2 pomodoros)
-            self.timer._timer_complete()
-            self.assertEqual(self.timer.current_phase, "long_break")
-            self.assertEqual(self.timer.completed_pomodoros, 2)
-            
-            # Long break completes -> work
-            self.timer._timer_complete()
-            self.assertEqual(self.timer.current_phase, "work")
+        # Mock the timer to complete instantly by directly calling the completion handler
+        
+        # Start first work session
+        self.timer.start()
+        self.assertTrue(self.timer.active)
+        self.assertEqual(self.timer.current_phase, "work")
+        
+        # Complete the work session -> short break
+        self.timer._timer_complete()
+        self.assertEqual(self.timer.current_phase, "short_break")
+        self.assertEqual(self.timer.completed_pomodoros, 1)
+        
+        # Complete the short break -> work
+        self.timer._timer_complete()
+        self.assertEqual(self.timer.current_phase, "work")
+        
+        # Complete next work session -> long break (after 2 pomodoros)
+        self.timer._timer_complete()
+        self.assertEqual(self.timer.current_phase, "long_break")
+        self.assertEqual(self.timer.completed_pomodoros, 2)
+        
+        # Complete the long break -> work
+        self.timer._timer_complete()
+        self.assertEqual(self.timer.current_phase, "work")
 
 class TestCountdownTimer(unittest.TestCase):
     """Test cases for the CountdownTimer class."""

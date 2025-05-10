@@ -247,8 +247,7 @@ class PomodoroTimer:
         """Start the timer thread to track completion."""
         if self.timer_thread is not None:
             self.timer_thread.cancel()
-            
-        time_remaining = max(0, (self.end_time - datetime.utcnow()).total_seconds())
+              time_remaining = max(0, (self.end_time - datetime.utcnow()).total_seconds())
         self.timer_thread = threading.Timer(time_remaining, self._timer_complete)
         self.timer_thread.daemon = True
         self.timer_thread.start()
@@ -269,7 +268,7 @@ class PomodoroTimer:
                 self.current_phase = "long_break"
             else:
                 self.current_phase = "short_break"
-        else:
+        elif self.current_phase == "short_break" or self.current_phase == "long_break":
             # After any break, the next phase is work
             self.current_phase = "work"
         
