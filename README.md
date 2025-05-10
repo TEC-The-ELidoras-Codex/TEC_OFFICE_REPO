@@ -28,8 +28,11 @@ TEC_OFFICE_REPO/
 ├── config/               # Configuration files (config.yaml, prompts.json, .env)
 ├── data/                 # Data storage (memories, lore, media)
 │   └── storage/          # Persistent storage for timers and other data
+├── docs/                 # Documentation
+│   └── docker_environment_setup.md  # Docker setup guide
 ├── logs/                 # Log files 
 ├── scripts/              # Utility scripts for various operations
+│   └── README.md         # Documentation for utility scripts
 ├── src/                  # Core source code
 │   ├── agents/           # AI agent implementations
 │   │   ├── airth_agent.py    # Airth - Oracle/Knowledge agent
@@ -248,6 +251,34 @@ python scripts/docker_manager.py status
 # View logs
 python scripts/docker_manager.py logs
 ```
+
+---
+
+## 🚢 Docker Environment Setup
+
+TEC Office Suite can be run in a Docker container for isolation and easy deployment:
+
+### Quick Start
+
+1. **Set up environment variables**:
+   ```powershell
+   # Windows
+   cd scripts
+   .\setup_env.ps1
+   ```
+
+2. **Build and run the Docker container**:
+   ```powershell
+   docker build -t tec_office:latest .
+   docker-compose up -d
+   ```
+
+3. **Test WordPress posting functionality**:
+   ```powershell
+   python scripts\test_wordpress.py
+   ```
+
+For detailed setup instructions, see [Docker Environment Setup Guide](docs/docker_environment_setup.md).
 
 ---
 
