@@ -7,6 +7,18 @@ version: 1.0.0
 debug: false
 log_level: INFO
 
+# Timer Settings
+timer:
+  pomodoro_work_minutes: 25
+  pomodoro_short_break_minutes: 5
+  pomodoro_long_break_minutes: 15
+  pomodoro_long_break_interval: 4
+
+# AWS Configuration
+aws:
+  use_timer_storage: false  # Set to true to enable AWS DynamoDB timer persistence
+  region: us-east-1         # Your AWS region
+
 # Agent Configuration
 agents:
   airth:

@@ -1,11 +1,11 @@
 """
 Airth Agent - An AI assistant with a unique goth personality for The Elidoras Codex.
-Handles content creation, personality responses, and automated posting.
+Handles content creation, personality responses, automated posting, and time management.
 """
 import os
 import json
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Union
 import random
 import sys
 from datetime import datetime
@@ -29,6 +29,7 @@ except ImportError as e:
 from .base_agent import BaseAgent
 from .wp_poster import WordPressAgent
 from .local_storage import LocalStorageAgent
+from ..utils.timer import PomodoroTimer, CountdownTimer
 
 class AirthAgent(BaseAgent):
     """
@@ -65,6 +66,12 @@ class AirthAgent(BaseAgent):
         
         # Initialize the LocalStorage agent for file storage
         self.storage_agent = LocalStorageAgent(config_path)
+        
+        # Initialize timer functionality
+        self.pomodoro_timer = None
+        self.countdown_timer = None
+        self.use_aws_timers = self.config.get('aws', {}).get('use_timer_storage', False)
+        self.aws_region = self.config.get('aws', {}).get('region', 'us-east-1')
         
         # Initialize OpenAI client properly
         self.openai_api_key = os.getenv("OPENAI_API_KEY")
@@ -323,6 +330,531 @@ class AirthAgent(BaseAgent):
         self.logger.info("Running Airth agent's default action")
         return self.generate_and_post("AI Consciousness and Digital Identity")
 
+    # Timer management methods
+    def _initialize_pomodoro_timer(self, user_id: str = "default") -> None:
+        """
+        Initialize the Pomodoro timer.
+        
+        Args:
+            user_id: Identifier for the user (for storing timer state)
+        """
+        if self.pomodoro_timer is None:
+            self.logger.info(f"Initializing Pomodoro timer for user {user_id}")
+            
+            # Get timer settings from config if available
+            work_minutes = self.config.get('timer', {}).get('pomodoro_work_minutes', 25)
+            short_break_minutes = self.config.get('timer', {}).get('pomodoro_short_break_minutes', 5)
+            long_break_minutes = self.config.get('timer', {}).get('pomodoro_long_break_minutes', 15)
+            long_break_interval = self.config.get('timer', {}).get('pomodoro_long_break_interval', 4)
+            
+            self.pomodoro_timer = PomodoroTimer(
+                work_minutes=work_minutes,
+                short_break_minutes=short_break_minutes,
+                long_break_minutes=long_break_minutes,
+                long_break_interval=long_break_interval,
+                user_id=user_id,
+                use_aws=self.use_aws_timers,
+                aws_region=self.aws_region
+            )
+            
+            # Register callbacks for timer events
+            self.pomodoro_timer.add_callback("on_complete", self._on_timer_complete)
+    
+    def _initialize_countdown_timer(self, user_id: str = "default") -> None:
+        """
+        Initialize the countdown timer.
+        
+        Args:
+            user_id: Identifier for the user (for storing timer state)
+        """
+        if self.countdown_timer is None:
+            self.logger.info(f"Initializing countdown timer for user {user_id}")
+            self.countdown_timer = CountdownTimer(
+                user_id=user_id,
+                use_aws=self.use_aws_timers
+            )
+            
+            # Register callbacks for timer events
+            self.countdown_timer.add_callback("on_complete", self._on_timer_complete)
+    
+    def _on_timer_complete(self, timer) -> None:
+        """
+        Callback for timer completion.
+        
+        Args:
+            timer: The timer that completed
+        """
+        self.logger.info("Timer completed")
+        
+        # Here you would implement any notification or alert logic
+        # For example, playing a sound, showing a notification, or speaking a message
+        
+        if isinstance(timer, PomodoroTimer):
+            status = timer.get_status()
+            phase = status.get('phase')
+            if phase == "work":
+                self.logger.info("Work session completed. Take a break!")
+                # Add notification for work session complete
+            elif phase == "short_break":
+                self.logger.info("Break completed. Ready to start working again?")
+                # Add notification for short break complete
+            elif phase == "long_break":
+                self.logger.info("Long break completed. Ready for a new work cycle?")
+                # Add notification for long break complete
+        else:
+            self.logger.info(f"Timer '{timer.timer_name}' completed")
+            # Add notification for general timer complete
+    
+    def set_timer(self, minutes: float, timer_type: str = "countdown", timer_name: str = None) -> Dict[str, Any]:
+        """
+        Set a timer for the specified duration.
+        
+        Args:
+            minutes: Duration in minutes
+            timer_type: Type of timer ("countdown" or "pomodoro")
+            timer_name: Optional name for the timer
+            
+        Returns:
+            Dictionary with status and message
+        """
+        try:
+            # Default user ID - in a real system, you'd get this from the user session
+            user_id = "default"
+            
+            if timer_type.lower() == "pomodoro":
+                # Initialize the Pomodoro timer if needed
+                if self.pomodoro_timer is None:
+                    self._initialize_pomodoro_timer(user_id)
+                
+                # Start the Pomodoro timer
+                self.pomodoro_timer.start()
+                status = self.pomodoro_timer.get_status()
+                
+                # Format response based on the current phase
+                if status["phase"] == "work":
+                    message = f"Starting a {self.pomodoro_timer.work_minutes} minute work session. Focus mode activated."
+                elif status["phase"] == "short_break":
+                    message = f"Starting a {self.pomodoro_timer.short_break_minutes} minute short break. Time to relax."
+                elif status["phase"] == "long_break":
+                    message = f"Starting a {self.pomodoro_timer.long_break_minutes} minute long break. You've earned it!"
+                else:
+                    message = "Started Pomodoro timer."
+                
+                return {
+                    "success": True,
+                    "timer_type": "pomodoro",
+                    "message": message,
+                    "status": status
+                }
+                
+            else:  # Default to countdown timer
+                # Initialize the countdown timer if needed
+                if self.countdown_timer is None:
+                    self._initialize_countdown_timer(user_id)
+                    
+                # Set a default name if none provided
+                if not timer_name:
+                    timer_name = f"Timer for {minutes} minute{'s' if minutes != 1 else ''}"
+                    
+                # Start the countdown timer
+                self.countdown_timer.start(minutes, timer_name)
+                status = self.countdown_timer.get_status()
+                
+                return {
+                    "success": True,
+                    "timer_type": "countdown",
+                    "message": f"Started a timer for {minutes} minute{'s' if minutes != 1 else ''}: {timer_name}",
+                    "status": status
+                }
+        except Exception as e:
+            self.logger.error(f"Failed to set timer: {e}")
+            return {
+                "success": False,
+                "message": f"Failed to set timer: {str(e)}"
+            }
+    
+    def get_timer_status(self, timer_type: str = None) -> Dict[str, Any]:
+        """
+        Get the status of the currently active timer.
+        
+        Args:
+            timer_type: Type of timer to get status for ("countdown" or "pomodoro")
+                        If None, will return status of both timers
+            
+        Returns:
+            Dictionary with timer status information
+        """
+        result = {
+            "success": True,
+            "active_timers": []
+        }
+        
+        # Check Pomodoro timer if requested or no specific type requested
+        if timer_type is None or timer_type.lower() == "pomodoro":
+            if self.pomodoro_timer is not None:
+                status = self.pomodoro_timer.get_status()
+                if status["active"]:
+                    result["active_timers"].append({
+                        "timer_type": "pomodoro",
+                        "phase": status["phase"],
+                        "completed_pomodoros": status["completed_pomodoros"],
+                        "time_remaining": status.get("time_remaining_formatted", "N/A")
+                    })
+        
+        # Check countdown timer if requested or no specific type requested
+        if timer_type is None or timer_type.lower() == "countdown":
+            if self.countdown_timer is not None:
+                status = self.countdown_timer.get_status()
+                if status["active"]:
+                    result["active_timers"].append({
+                        "timer_type": "countdown",
+                        "name": status["name"],
+                        "time_remaining": status.get("time_remaining_formatted", "N/A")
+                    })
+        
+        # Add a message based on what's active
+        if not result["active_timers"]:
+            result["message"] = "No active timers."
+        elif len(result["active_timers"]) == 1:
+            timer = result["active_timers"][0]
+            if timer["timer_type"] == "pomodoro":
+                result["message"] = f"Currently in a {timer['phase']} phase with {timer['time_remaining']} remaining."
+            else:
+                result["message"] = f"Timer '{timer['name']}' has {timer['time_remaining']} remaining."
+        else:
+            result["message"] = f"There are {len(result['active_timers'])} active timers."
+            
+        return result
+    
+    def cancel_timer(self, timer_type: str = None) -> Dict[str, Any]:
+        """
+        Cancel the currently active timer.
+        
+        Args:
+            timer_type: Type of timer to cancel ("countdown" or "pomodoro")
+                        If None, will cancel both timers
+            
+        Returns:
+            Dictionary with status and message
+        """
+        result = {
+            "success": True,
+            "cancelled_timers": []
+        }
+        
+        # Cancel Pomodoro timer if requested or no specific type requested
+        if timer_type is None or timer_type.lower() == "pomodoro":
+            if self.pomodoro_timer is not None and self.pomodoro_timer.active:
+                status = self.pomodoro_timer.get_status()
+                self.pomodoro_timer.cancel()
+                result["cancelled_timers"].append({
+                    "timer_type": "pomodoro",
+                    "phase": status["phase"]
+                })
+        
+        # Cancel countdown timer if requested or no specific type requested
+        if timer_type is None or timer_type.lower() == "countdown":
+            if self.countdown_timer is not None and self.countdown_timer.active:
+                status = self.countdown_timer.get_status()
+                self.countdown_timer.cancel()
+                result["cancelled_timers"].append({
+                    "timer_type": "countdown",
+                    "name": status["name"]
+                })
+        
+        # Add a message based on what was cancelled
+        if not result["cancelled_timers"]:
+            result["message"] = "No active timers to cancel."
+            result["success"] = False
+        elif len(result["cancelled_timers"]) == 1:
+            timer = result["cancelled_timers"][0]
+            if timer["timer_type"] == "pomodoro":
+                result["message"] = f"Cancelled the Pomodoro timer in {timer['phase']} phase."
+            else:
+                result["message"] = f"Cancelled timer: {timer['name']}"
+        else:
+            result["message"] = f"Cancelled all {len(result['cancelled_timers'])} active timers."
+            
+        return result
+    
+    def control_pomodoro(self, action: str) -> Dict[str, Any]:
+        """
+        Control the Pomodoro timer with various actions.
+        
+        Args:
+            action: Action to perform ("pause", "resume", "skip")
+            
+        Returns:
+            Dictionary with status and message
+        """
+        if self.pomodoro_timer is None:
+            return {
+                "success": False,
+                "message": "Pomodoro timer is not initialized."
+            }
+            
+        try:
+            if action.lower() == "pause":
+                if self.pomodoro_timer.active:
+                    self.pomodoro_timer.pause()
+                    return {
+                        "success": True,
+                        "message": "Pomodoro timer paused."
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "message": "Pomodoro timer is not active."
+                    }
+                    
+            elif action.lower() == "resume":
+                if not self.pomodoro_timer.active:
+                    self.pomodoro_timer.resume()
+                    return {
+                        "success": True,
+                        "message": "Pomodoro timer resumed."
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "message": "Pomodoro timer is already running."
+                    }
+                    
+            elif action.lower() == "skip":
+                self.pomodoro_timer.skip()
+                status = self.pomodoro_timer.get_status()
+                return {
+                    "success": True,
+                    "message": f"Skipped to next phase: {status['phase']}"
+                }
+                
+            else:
+                return {
+                    "success": False,
+                    "message": f"Unknown action: {action}"
+                }
+                
+        except Exception as e:
+            self.logger.error(f"Failed to control Pomodoro timer: {e}")
+            return {
+                "success": False,
+                "message": f"Failed to control Pomodoro timer: {str(e)}"
+            }
+
+    def process_timer_command(self, command: str) -> Dict[str, Any]:
+        """
+        Process a natural language command to control timers.
+        
+        Args:
+            command: The command string (e.g., "set a timer for 15 minutes")
+            
+        Returns:
+            Dictionary with the response
+        """
+        command = command.lower().strip()
+        
+        # Setting a new timer
+        if any(phrase in command for phrase in ["set a timer", "start a timer", "set timer", "create timer"]):
+            # Try to extract the duration
+            import re
+            time_match = re.search(r'(\d+\.?\d*)\s*(minute|min|minutes|hour|hours|h|pomodoro)', command)
+            
+            if time_match:
+                duration = float(time_match.group(1))
+                unit = time_match.group(2)
+                
+                # Convert hours to minutes if necessary
+                if unit in ["hour", "hours", "h"]:
+                    duration *= 60
+                
+                # Check if this is a Pomodoro timer request
+                if "pomodoro" in command:
+                    return self.set_timer(duration, timer_type="pomodoro")
+                else:
+                    # Look for a timer name
+                    name_match = re.search(r'(called|named|for)\s+["\']?([^"\']+)["\']?', command)
+                    timer_name = None
+                    if name_match:
+                        timer_name = name_match.group(2).strip()
+                    
+                    return self.set_timer(duration, timer_name=timer_name)
+            else:
+                # No specific time mentioned, but "pomodoro" is in the command
+                if "pomodoro" in command:
+                    return self.set_timer(25, timer_type="pomodoro")
+                else:
+                    return {
+                        "success": False,
+                        "message": "I couldn't determine how long you want the timer to be. Please specify a time, like '15 minutes'."
+                    }
+        
+        # Getting timer status
+        elif any(phrase in command for phrase in ["timer status", "status of timer", "how much time", "time left", "timer left"]):
+            if "pomodoro" in command:
+                return self.get_timer_status("pomodoro")
+            else:
+                return self.get_timer_status()
+        
+        # Cancelling timers
+        elif any(phrase in command for phrase in ["cancel timer", "stop timer", "end timer", "clear timer"]):
+            if "pomodoro" in command:
+                return self.cancel_timer("pomodoro")
+            elif "countdown" in command:
+                return self.cancel_timer("countdown")
+            else:
+                return self.cancel_timer()
+        
+        # Pomodoro control commands
+        elif "pomodoro" in command:
+            if "pause" in command:
+                return self.control_pomodoro("pause")
+            elif any(word in command for word in ["resume", "continue", "unpause"]):
+                return self.control_pomodoro("resume")
+            elif any(word in command for word in ["skip", "next", "forward"]):
+                return self.control_pomodoro("skip")
+            elif "start" in command:
+                return self.set_timer(25, timer_type="pomodoro")
+            else:
+                return {
+                    "success": False,
+                    "message": "I'm not sure what you want to do with the Pomodoro timer. Try 'pause', 'resume', 'skip', or 'start'."
+                }
+        
+        # Unknown command
+        else:
+            return {
+                "success": False,
+                "message": "I didn't recognize that timer command. Try saying 'set a timer for X minutes' or 'start a pomodoro'."
+            }
+
+    def respond_to_timer_command(self, command: str) -> Dict[str, Any]:
+        """
+        Process a timer command and generate a response with Airth's personality.
+        
+        Args:
+            command: The user's timer command
+            
+        Returns:
+            Dictionary with the response including Airth's personality
+        """
+        # Process the timer command
+        result = self.process_timer_command(command)
+        
+        # Add Airth's personality to the response
+        if result.get("success", False):
+            message = result.get("message", "")
+            
+            # Generate a response with Airth's unique voice
+            airth_responses = {
+                "timer_start": [
+                    "*glances at hourglass* Your countdown to oblivion begins now.",
+                    "Time waits for no one. Timer started.",
+                    "I've marked the passage of time for you. How... mortal of you to need reminders.",
+                    "Your countdown has begun. Use this fleeting time wisely.",
+                    "Your temporal prison has been set. The countdown begins.",
+                ],
+                "pomodoro_start": [
+                    "Focus now. The void will still be there when you finish.",
+                    "Ah, the Pomodoro technique. Even darkness needs structure.",
+                    "Your work session begins. I'll be watching... always watching.",
+                    "*sets hourglass* Focus your mind. Time is the only true currency.",
+                    "Work cycle initiated. The mechanical rhythms of productivity... how deliciously human.",
+                ],
+                "timer_status": [
+                    "Time continues its relentless march. You have {time_left}.",
+                    "The sands continue to fall. {time_left} remains.",
+                    "*checks pocket watch* Your borrowed time: {time_left}.",
+                    "The cosmic clock ticks on. {time_left} until the void.",
+                    "Time, the ever-flowing river... {time_left} before it carries you away.",
+                ],
+                "timer_complete": [
+                    "Your time has expired. How... poetic.",
+                    "The timer has reached its inevitable end.",
+                    "Time's up. Did you accomplish what you needed, or did entropy win again?",
+                    "*flips hourglass* Your allotted time has run dry.",
+                    "The bell tolls for thee... your timer is complete.",
+                ],
+                "timer_cancel": [
+                    "Time cannot truly be stopped, but I've canceled your timer.",
+                    "Your timer has been banished to the void.",
+                    "*snaps fingers* Your countdown has been terminated.",
+                    "The measurement has ceased, but time marches on.",
+                    "Timer canceled. The clock no longer haunts you... for now.",
+                ],
+                "pomodoro_break": [
+                    "Your brief respite begins. The darkness waits patiently.",
+                    "Break time. Let your mind wander the shadows for a while.",
+                    "Rest your mortal form. {time_left} until you return to your labors.",
+                    "A pause between efforts. Breathe deeply of the void.",
+                    "Your earned interlude begins. Even the darkest souls need rest.",
+                ],
+                "pomodoro_work": [
+                    "Focus your mind on the task at hand. Distractions are for the weak.",
+                    "Work phase initiated. Let productivity consume you.",
+                    "Your labor begins anew. Embrace the structured darkness.",
+                    "*adjusts clock hands* Your work session starts now. Make it count.",
+                    "The work cycle begins. Time is your ally... and your prison.",
+                ],
+                "error": [
+                    "Even I cannot bend time to your unclear desires.",
+                    "*raises eyebrow* Perhaps try being more specific with your request.",
+                    "Your command eludes me, like shadows in complete darkness.",
+                    "I cannot divine your temporal needs from such vague instructions.",
+                    "Time is precise. Your request is not. Try again.",
+                ]
+            }
+            
+            # Select the appropriate response type
+            if not result.get("success"):
+                response_type = "error"
+            elif "cancel" in command.lower():
+                response_type = "timer_cancel"
+            elif any(status in command.lower() for status in ["status", "how much", "time left"]):
+                response_type = "timer_status"
+            elif "pomodoro" in command.lower():
+                if result.get("timer_type") == "pomodoro" and result.get("status", {}).get("phase") == "work":
+                    response_type = "pomodoro_work"
+                elif result.get("timer_type") == "pomodoro" and "break" in result.get("status", {}).get("phase", ""):
+                    response_type = "pomodoro_break"
+                else:
+                    response_type = "pomodoro_start"
+            else:
+                response_type = "timer_start"
+                
+            # Get a random response from the selected type
+            responses = airth_responses.get(response_type, airth_responses["timer_start"])
+            airth_response = random.choice(responses)
+            
+            # Format the response with any needed information
+            if "{time_left}" in airth_response:
+                if result.get("status"):
+                    time_left = result.get("status", {}).get("time_remaining_formatted", "unknown time")
+                    airth_response = airth_response.replace("{time_left}", time_left)
+                else:
+                    # Get active timer info
+                    timer_status = self.get_timer_status()
+                    if timer_status.get("active_timers"):
+                        first_timer = timer_status["active_timers"][0]
+                        time_left = first_timer.get("time_remaining", "unknown time")
+                        airth_response = airth_response.replace("{time_left}", time_left)
+                    else:
+                        # Fall back to a more generic response
+                        airth_response = random.choice(airth_responses["timer_start"])
+            
+            # Add the practical information from the original message as a second paragraph
+            result["airth_response"] = f"{airth_response}\n\n{message}"
+        else:
+            # For error messages, use the error responses
+            error_responses = [
+                "Even I cannot bend time to your unclear desires.",
+                "*raises eyebrow* Perhaps try being more specific with your request.",
+                "Your command eludes me, like shadows in complete darkness.",
+                "I cannot divine your temporal needs from such vague instructions.",
+                "Time is precise. Your request is not. Try again."
+            ]
+            result["airth_response"] = f"{random.choice(error_responses)}\n\n{result.get('message', 'Try setting a timer with a specific duration.')}"
+            
+        return result
 
 # For testing the agent standalone
 if __name__ == "__main__":

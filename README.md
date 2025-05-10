@@ -1,6 +1,6 @@
 # ⚡ TEC_OFFICE_REPO: Command Nexus for The Elidoras Codex ⚡
 
-Welcome, **Codex Architects**, to the TEC_OFFICE_REPO—a hub of automation, AI-enhanced workflows, and mythic cyberpunk integrations. This repository powers the inner workings of TEC's development universe, blending **GPT-driven automation**, **WordPress integrations**, and **cybernetic efficiency**.
+Welcome, **Codex Architects**, to the TEC_OFFICE_REPO—a hub of automation, AI-enhanced workflows, and mythic cyberpunk integrations. This repository powers the inner workings of TEC's development universe, blending **GPT-driven automation**, **WordPress integrations**, **time management tools**, and **cybernetic efficiency**.
 
 ---
 
@@ -15,6 +15,7 @@ This repository is the **nerve center** for TEC's internal operations, designed 
 1. **AI-Powered Automation**: Craft and deploy TEC-specific GPT workflows.  
 2. **WordPress Integration**: Generate cybernetic WordPress content and tools.  
 3. **AI Agents**: Host and manage TEC's virtual employees: Airth, Budlee, and Sassafras.
+4. **Time Management**: Implement Pomodoro technique and timer functionality for productivity.
 
 ---
 
@@ -26,6 +27,7 @@ Here's a breakdown of the architecture:
 TEC_OFFICE_REPO/
 ├── config/               # Configuration files (config.yaml, prompts.json, .env)
 ├── data/                 # Data storage (memories, lore, media)
+│   └── storage/          # Persistent storage for timers and other data
 ├── logs/                 # Log files 
 ├── scripts/              # Utility scripts for various operations
 ├── src/                  # Core source code
