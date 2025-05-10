@@ -9,6 +9,7 @@ from typing import Dict, Any, Optional
 
 from dotenv import load_dotenv
 import json # Added for agent-specific JSON config
+import psycopg2 # Added for PostgreSQL connection
 
 # Configure logging
 logging.basicConfig(
@@ -102,27 +103,56 @@ class BaseAgent:
 
     def _connect_db(self) -> None:
         """
-        Placeholder for establishing a database connection.
-        Subclasses should override this method.
+        Establish a PostgreSQL database connection using credentials from environment variables
+        or the configuration file.
         """
-        self.logger.info("Database connection not implemented in BaseAgent. Override in subclass if needed.")
-        # Example:
-        # db_host = os.getenv("DB_HOST") or self.config.get("database", {}).get("host")
-        # if db_host:
-        #     self.logger.info(f"Attempting to connect to DB: {db_host}")
-        #     # self.db_connection = ... connect here ...
-        # else:
-        #     self.logger.warning("DB host not configured.")
+        try:
+            db_name = os.getenv("DB_NAME") or self.config.get("database", {}).get("name")
+            db_user = os.getenv("DB_USER") or self.config.get("database", {}).get("user")
+            db_password = os.getenv("DB_PASSWORD") or self.config.get("database", {}).get("password")
+            db_host = os.getenv("DB_HOST") or self.config.get("database", {}).get("host")
+            db_port = os.getenv("DB_PORT") or self.config.get("database", {}).get("port", "5432")
+
+            if not all([db_name, db_user, db_password, db_host, db_port]):
+                self.logger.warning("Database connection parameters not fully configured. Skipping DB connection.")
+                self.db_connection = None
+                return
+
+            self.logger.info(f"Attempting to connect to PostgreSQL database: {db_name} at {db_host}:{db_port}")
+            self.db_connection = psycopg2.connect(
+                dbname=db_name,
+                user=db_user,
+                password=db_password,
+                host=db_host,
+                port=db_port
+            )
+            self.logger.info("Successfully connected to PostgreSQL database.")
+            # You can create a cursor here if needed for immediate operations:
+            # cur = self.db_connection.cursor()
+            # cur.execute("SELECT version();")
+            # db_version = cur.fetchone()
+            # self.logger.info(f"PostgreSQL version: {db_version}")
+            # cur.close()
+
+        except psycopg2.Error as e:
+            self.logger.error(f"Error connecting to PostgreSQL database: {e}")
+            self.db_connection = None
+        except Exception as e:
+            self.logger.error(f"An unexpected error occurred during DB connection: {e}")
+            self.db_connection = None
 
     def _disconnect_db(self) -> None:
         """
-        Placeholder for closing a database connection.
-        Subclasses should override this method if they manage connections.
+        Close the PostgreSQL database connection if it exists.
         """
         if self.db_connection:
-            self.logger.info("Closing database connection (placeholder).")
-            # ... actual disconnection logic ...
-            self.db_connection = None
+            try:
+                self.db_connection.close()
+                self.logger.info("PostgreSQL database connection closed.")
+            except psycopg2.Error as e:
+                self.logger.error(f"Error closing PostgreSQL database connection: {e}")
+            finally:
+                self.db_connection = None
 
     def _initialize_llm(self) -> None:
         """
