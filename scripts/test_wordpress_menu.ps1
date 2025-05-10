@@ -93,14 +93,26 @@ do {
                 $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
             }
         }
-        
-        '5' {
+          '5' {
             # Check if the initialize script exists
             $InitializeWPPath = Join-Path -Path $ProjectRoot -ChildPath "scripts\initialize_wordpress.py"
             if (Test-Path $InitializeWPPath) {
                 Run-Test -Command "python scripts\initialize_wordpress.py" -Description "Initialize WordPress Categories"
             } else {
                 Write-Host "`n❌ WordPress initialization script not found." @FgRed
+                Write-Host "This script might not have been created yet.`n" @FgYellow
+                Write-Host "Press any key to return to menu..."
+                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+            }
+        }
+        
+        '6' {
+            # Check if the styles test script exists
+            $WpStylesTestPath = Join-Path -Path $ProjectRoot -ChildPath "scripts\wp_test_both_styles.py"
+            if (Test-Path $WpStylesTestPath) {
+                Run-Test -Command "python scripts\wp_test_both_styles.py" -Description "Test Both WordPress API Styles"
+            } else {
+                Write-Host "`n❌ WordPress API styles test script not found." @FgRed
                 Write-Host "This script might not have been created yet.`n" @FgYellow
                 Write-Host "Press any key to return to menu..."
                 $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
